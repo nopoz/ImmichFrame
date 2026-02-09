@@ -1,5 +1,4 @@
 using ImmichFrame.Core.Api;
-using ImmichFrame.Core.Helpers;
 using ImmichFrame.Core.Interfaces;
 
 namespace ImmichFrame.Core.Logic.Pool;
@@ -8,27 +7,28 @@ public class PersonAssetsPool(IApiCache apiCache, ImmichApi immichApi, IAccountS
 {
     protected override async Task<IEnumerable<AssetResponseDto>> LoadAssets(CancellationToken ct = default)
     {
-        var personAssets = new List<AssetResponseDto>();
+        // Load only included people's assets in parallel
+        var includedTasks = accountSettings.People
+            .Select(personId => LoadAssetsForPerson(personId, ct));
 
-        var people = accountSettings.People;
-        if (people == null || people.Count == 0)
+        var results = await Task.WhenAll(includedTasks);
+        var personAssets = results.SelectMany(x => x);
+
+        // Filter out assets that contain any excluded person
+        // Each asset has a People collection (since we fetch with WithPeople=true)
+        if (accountSettings.ExcludedPeople.Count > 0)
         {
-            return personAssets;
+            var excludedPersonIds = accountSettings.ExcludedPeople
+                .Select(id => id.ToString().ToLowerInvariant())
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            personAssets = personAssets.Where(asset =>
+                asset.People == null ||
+                asset.People.Count == 0 ||
+                !asset.People.Any(person => excludedPersonIds.Contains(person.Id)));
         }
 
-        foreach (var personId in people)
-        {
-            personAssets.AddRange(await LoadAssetsForPerson(personId, ct));
-        }
-
-        var excludedPersonAssets = new List<AssetResponseDto>();
-
-        foreach (var personId in accountSettings.ExcludedPeople)
-        {
-            excludedPersonAssets.AddRange(await LoadAssetsForPerson(personId, ct));
-        }
-
-        return personAssets.WhereExcludes(excludedPersonAssets, t => t.Id);
+        return personAssets;
     }
 
     private async Task<List<AssetResponseDto>> LoadAssetsForPerson(Guid personId, CancellationToken ct)
