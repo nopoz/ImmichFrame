@@ -35,15 +35,15 @@ public class MultiImmichFrameLogicDelegate : IImmichFrameLogic
 
 
     public Task<AssetResponseDto> GetAssetInfoById(Guid assetId)
-        => _accountSelectionStrategy.ForAsset(assetId, async logic => (await logic.GetAssetInfoById(assetId)).WithAccount(logic));
+        => _accountSelectionStrategy.ForAssetAsync(assetId, async logic => (await logic.GetAssetInfoById(assetId)).WithAccount(logic));
 
 
     public Task<IEnumerable<AlbumResponseDto>> GetAlbumInfoById(Guid assetId)
-        => _accountSelectionStrategy.ForAsset(assetId, logic => logic.GetAlbumInfoById(assetId));
+        => _accountSelectionStrategy.ForAssetAsync(assetId, logic => logic.GetAlbumInfoById(assetId));
 
 
     public Task<(string fileName, string ContentType, Stream fileStream)> GetAsset(Guid assetId, AssetTypeEnum? assetType = null)
-        => _accountSelectionStrategy.ForAsset(assetId, logic => logic.GetAsset(assetId, assetType));
+        => _accountSelectionStrategy.ForAssetAsync(assetId, logic => logic.GetAsset(assetId, assetType));
 
     public async Task<long> GetTotalAssets()
     {

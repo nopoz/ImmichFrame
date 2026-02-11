@@ -34,11 +34,32 @@ public class BloomFilterAssetAccountTracker(ILogger<BloomFilterAssetAccountTrack
                 }
                 catch (Exception e)
                 {
-                    _logger.LogWarning(e, "Failed to locate asset {assetId} in {entry.Key}. Must be false positive, trying next account.", assetId, entry.Key);   
+                    _logger.LogWarning(e, "Failed to locate asset {assetId} in {entry.Key}. Must be false positive, trying next account.", assetId, entry.Key);
                 }
             }
         }
-        
+
+        _logger.LogError("Failed to locate account for asset {assetId}", assetId);
+        throw new AssetNotFoundException();
+    }
+
+    public async Task<T> ForAssetAsync<T>(string assetId, Func<IAccountImmichFrameLogic, Task<T>> f)
+    {
+        foreach (var entry in logicToFilter)
+        {
+            if (entry.Value.Contains(assetId))
+            {
+                try
+                {
+                    return await f(entry.Key);
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e, "Failed to locate asset {assetId} in {entry.Key}. Must be false positive, trying next account.", assetId, entry.Key);
+                }
+            }
+        }
+
         _logger.LogError("Failed to locate account for asset {assetId}", assetId);
         throw new AssetNotFoundException();
     }
